@@ -1,5 +1,13 @@
 .DS_Store
+
+# Xcode build and user-specific state
 .build/
 DerivedData/
 *.xcuserstate
 xcuserdata/
+
+# Generated marketing-animation intermediates
+marketing/frames/
+marketing/png/
+marketing/*-palette.png
+marketing/*-contact-sheet.png
