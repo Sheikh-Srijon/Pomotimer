@@ -20,7 +20,7 @@ Alternatively, from Xcode:
 
 The app launches as a compact edge tab. Hover over or click the tab to expand it. Clicking the Dock icon also opens the panel.
 
-In Timer mode, click the large countdown value to type a duration as `MM:SS` or `HH:MM:SS`. Press Return to save or Escape to cancel. The `−5m`, `−1m`, `+1m`, and `+5m` buttons provide quick adjustments while the timer is stopped.
+In Timer mode, click the large countdown value to type a duration as `MM:SS` or `HH:MM:SS`. Press Return to save or Escape to cancel. Use the `5m`, `15m`, `30m`, `45m`, and `60m` presets to set a countdown in one click. Invalid input and attempts to start an empty timer show a compact inline message.
 
 Enable **Hide countdown when idle** to hide the elapsed time or countdown when either mode is collapsed. The collapsed tab shows only a stopwatch icon; hovering or clicking it restores the complete active panel.
 This option starts turned off each time the app launches.

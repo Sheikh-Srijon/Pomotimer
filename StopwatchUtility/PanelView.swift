@@ -7,7 +7,6 @@ struct PanelView: View {
     @ObservedObject var presentation: PanelPresentation
     @State private var isEditingTimer = false
     @State private var timerDraft = ""
-    @State private var timerInputError: String?
     @FocusState private var timerFieldFocused: Bool
 
     var body: some View {
@@ -109,7 +108,7 @@ struct PanelView: View {
                     .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 7))
                     .overlay {
                         RoundedRectangle(cornerRadius: 7)
-                            .stroke(timerInputError == nil ? utilityGreen.opacity(0.65) : Color.orange, lineWidth: 1)
+                            .stroke(model.timerError == nil ? utilityGreen.opacity(0.65) : Color.red, lineWidth: 1)
                     }
                     .onSubmit { commitTimerEdit(refocusOnFailure: true) }
                     .onExitCommand(perform: cancelTimerEdit)
@@ -172,16 +171,19 @@ struct PanelView: View {
     }
 
     private var durationEditor: some View {
-        HStack(spacing: 6) {
-            QuickAdjustButton(title: "−5m", seconds: -300, model: model)
-            QuickAdjustButton(title: "−1m", seconds: -60, model: model)
-            QuickAdjustButton(title: "+1m", seconds: 60, model: model)
-            QuickAdjustButton(title: "+5m", seconds: 300, model: model)
+        HStack(spacing: 5) {
+            ForEach([5, 15, 30, 45, 60], id: \.self) { minutes in
+                TimerPresetButton(
+                    minutes: minutes,
+                    selected: Int(model.displayedTimerRemaining) == minutes * 60,
+                    model: model
+                )
+            }
         }
         .disabled(model.isTimerRunning)
         .opacity(model.isTimerRunning ? 0.45 : 1)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Adjust countdown")
+        .accessibilityLabel("Countdown presets")
     }
 
     private var behaviorPicker: some View {
@@ -280,14 +282,14 @@ struct PanelView: View {
     }
 
     private var subtitle: String {
-        if model.section == .timer, let timerInputError { return timerInputError }
+        if model.section == .timer, let timerError = model.timerError { return timerError }
         if let completionMessage = model.completionMessage, model.section == .timer { return completionMessage }
         if model.section == .timer { return model.isTimerRunning ? "Focus" : "Click time to edit" }
         return model.isStopwatchRunning ? "Running" : "Ready"
     }
 
     private var subtitleColor: Color {
-        if timerInputError != nil { return .orange }
+        if model.timerError != nil, model.section == .timer { return .red }
         if model.completionMessage != nil, model.section == .timer { return utilityGreen }
         return .secondary
     }
@@ -309,15 +311,14 @@ struct PanelView: View {
     private func beginTimerEdit() {
         guard model.section == .timer, !model.isTimerRunning else { return }
         timerDraft = formatTimer(model.displayedTimerRemaining)
-        timerInputError = nil
+        model.clearTimerError()
         isEditingTimer = true
         DispatchQueue.main.async { timerFieldFocused = true }
     }
 
     private func commitTimerEdit(refocusOnFailure: Bool) {
         guard isEditingTimer else { return }
-        guard let duration = TimekeepingModel.parseTimerDuration(timerDraft) else {
-            timerInputError = "Use MM:SS or HH:MM:SS"
+        guard model.setTimerDuration(from: timerDraft) else {
             if refocusOnFailure {
                 DispatchQueue.main.async { timerFieldFocused = true }
             } else {
@@ -325,14 +326,12 @@ struct PanelView: View {
             }
             return
         }
-        model.setTimerDuration(duration)
-        timerInputError = nil
         isEditingTimer = false
         timerFieldFocused = false
     }
 
     private func cancelTimerEdit() {
-        timerInputError = nil
+        model.clearTimerError()
         isEditingTimer = false
         timerFieldFocused = false
     }
@@ -378,23 +377,24 @@ private struct SectionButton: View {
     }
 }
 
-private struct QuickAdjustButton: View {
-    let title: String
-    let seconds: TimeInterval
+private struct TimerPresetButton: View {
+    let minutes: Int
+    let selected: Bool
     @ObservedObject var model: TimekeepingModel
 
     var body: some View {
         Button {
-            model.adjustTimer(by: seconds)
+            model.setTimerPreset(minutes: minutes)
         } label: {
-            Text(title)
+            Text("\(minutes)m")
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .frame(maxWidth: .infinity)
                 .frame(height: 28)
-                .background(Color.white.opacity(0.09), in: RoundedRectangle(cornerRadius: 6))
+                .background(selected ? utilityGreen.opacity(0.9) : Color.white.opacity(0.09), in: RoundedRectangle(cornerRadius: 6))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Adjust timer by \(title)")
+        .accessibilityLabel("Set timer to \(minutes) minutes")
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 

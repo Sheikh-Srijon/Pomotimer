@@ -43,7 +43,12 @@ final class TimekeepingModel: ObservableObject {
         var timerEndsAt: Date?
     }
 
-    @Published var section: TimerSection { didSet { persist() } }
+    @Published var section: TimerSection {
+        didSet {
+            timerError = nil
+            persist()
+        }
+    }
     @Published var behavior: PanelBehavior { didSet { persist() } }
     @Published private(set) var stopwatchAccumulated: TimeInterval
     @Published private(set) var stopwatchStartedAt: Date?
@@ -53,6 +58,7 @@ final class TimekeepingModel: ObservableObject {
     @Published private(set) var timerEndsAt: Date?
     @Published private(set) var now: Date
     @Published var completionMessage: String?
+    @Published private(set) var timerError: String?
 
     private let defaults: UserDefaults
     private let storageKey = "TimekeepingSnapshot.v1"
@@ -77,6 +83,7 @@ final class TimekeepingModel: ObservableObject {
         timerDuration = snapshot.timerDuration
         timerRemaining = snapshot.timerRemaining
         timerEndsAt = snapshot.timerEndsAt
+        timerError = nil
 
         reconcile(at: now, notify: false)
         ticker = Timer.publish(every: 0.03, on: .main, in: .common)
@@ -124,12 +131,26 @@ final class TimekeepingModel: ObservableObject {
         timerDuration = total
         timerRemaining = total
         completionMessage = nil
+        timerError = nil
         persist()
     }
 
-    func adjustTimer(by offset: TimeInterval) {
-        guard !isTimerRunning else { return }
-        setTimerDuration(timerRemaining + offset)
+    func setTimerPreset(minutes: Int) {
+        setTimerDuration(TimeInterval(max(0, minutes) * 60))
+    }
+
+    @discardableResult
+    func setTimerDuration(from text: String) -> Bool {
+        guard let duration = Self.parseTimerDuration(text) else {
+            timerError = "Use MM:SS or HH:MM:SS"
+            return false
+        }
+        setTimerDuration(duration)
+        return true
+    }
+
+    func clearTimerError() {
+        timerError = nil
     }
 
     static func parseTimerDuration(_ text: String) -> TimeInterval? {
@@ -177,9 +198,13 @@ final class TimekeepingModel: ObservableObject {
             timerEndsAt = nil
         } else {
             if timerRemaining <= 0 { timerRemaining = timerDuration }
-            guard timerRemaining > 0 else { return }
+            guard timerRemaining > 0 else {
+                timerError = "Set a timer duration first."
+                return
+            }
             timerEndsAt = now.addingTimeInterval(timerRemaining)
         }
+        timerError = nil
         persist()
     }
 

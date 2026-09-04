@@ -70,15 +70,35 @@ final class TimekeepingModelTests: XCTestCase {
         XCTAssertNil(TimekeepingModel.parseTimerDuration("hello"))
     }
 
-    func testQuickAdjustChangesStoppedCountdownAndClamps() {
+    func testQuickPresetsSetExactDuration() {
         let model = TimekeepingModel(defaults: defaults)
-        model.setTimerDuration(hours: 0, minutes: 1, seconds: 0)
 
-        model.adjustTimer(by: 300)
-        XCTAssertEqual(model.displayedTimerRemaining, 360)
+        model.setTimerPreset(minutes: 5)
+        XCTAssertEqual(model.displayedTimerRemaining, 300)
 
-        model.adjustTimer(by: -1_000)
-        XCTAssertEqual(model.displayedTimerRemaining, 0)
+        model.setTimerPreset(minutes: 60)
+        XCTAssertEqual(model.displayedTimerRemaining, 3_600)
+    }
+
+    func testStartingEmptyTimerShowsValidation() {
+        let model = TimekeepingModel(defaults: defaults)
+        model.resetTimer()
+
+        model.toggleTimer()
+
+        XCTAssertFalse(model.isTimerRunning)
+        XCTAssertEqual(model.timerError, "Set a timer duration first.")
+    }
+
+    func testKeyboardDurationValidationClearsAfterCorrection() {
+        let model = TimekeepingModel(defaults: defaults)
+
+        XCTAssertFalse(model.setTimerDuration(from: "10:99"))
+        XCTAssertEqual(model.timerError, "Use MM:SS or HH:MM:SS")
+
+        XCTAssertTrue(model.setTimerDuration(from: "15:00"))
+        XCTAssertNil(model.timerError)
+        XCTAssertEqual(model.displayedTimerRemaining, 900)
     }
 
     func testResetTimerStopsAndClearsCountdown() {
